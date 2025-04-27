@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Clicker</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            margin: 0;
+            padding: 20px;
+            color: white;
+            text-align: center;
+        }
+        #counter {
+            font-size: 48px;
+            margin: 20px;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        #clickButton {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff6b6b, #ff4757);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            margin: 0 auto;
+            display: block;
+        }
+        #clickButton:active {
+            transform: scale(0.95);
+        }
+        .tab-button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+        .tab-button.active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .upgrade {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .upgrade button {
+            padding: 8px 15px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+        .upgrade button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-tab" class="tab-content active">
+        <h1>Telegram Clicker</h1>
+        <div id="counter">0</div>
+        <button id="clickButton">КЛИКНИ!</button>
+        <button id="openShop" class="tab-button">Магазин 🛒</button>
+    </div>
+
+    <div id="shop-tab" class="tab-content">
+        <h1>🛒 Магазин улучшений</h1>
+        
+        <div class="upgrade">
+            <div>
+                <h3>⚡ Автокликер</h3>
+                <p>+<span id="auto-power">1</span> очко/сек</p>
+                <p>Цена: <span id="auto-price">50</span> очков</p>
+            </div>
+            <button id="buy-auto">Купить</button>
+        </div>
+        
+        <div class="upgrade">
+            <div>
+                <h3>💥 Двойной клик</h3>
+                <p>Увеличивает силу клика x2</p>
+                <p>Цена: <span id="double-price">100</span> очков</p>
+            </div>
+            <button id="buy-double">Купить</button>
+        </div>
+        
+        <div class="upgrade">
+            <div>
+                <h3>🚀 Мега клик</h3>
+                <p>+10 очков за клик</p>
+                <p>Цена: <span id="mega-price">500</span> очков</p>
+            </div>
+            <button id="buy-mega">Купить</button>
+        </div>
+        
+        <button id="backToGame" class="tab-button">← Назад</button>
+    </div>
+
+    <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        // Игровые переменные
+        let score = 0;
+        let clickPower = 1;
+        let autoClickerPower = 0;
+        let autoClickerLevel = 0;
+        let isDoubleClickBought = false;
+        let isMegaClickBought = false;
+        
+        // Элементы интерфейса
+        const counter = document.getElementById('counter');
+        const clickButton = document.getElementById('clickButton');
+        
+        // Система вкладок
+        const openShopBtn = document.getElementById('openShop');
+        const backToGameBtn = document.getElementById('backToGame');
+        const gameTab = document.getElementById('game-tab');
+        const shopTab = document.getElementById('shop-tab');
+        
+        // Улучшения
+        const buyAutoBtn = document.getElementById('buy-auto');
+        const buyDoubleBtn = document.getElementById('buy-double');
+        const buyMegaBtn = document.getElementById('buy-mega');
+        
+        // Загрузка сохранений
+        function loadGame() {
+            if (tg.initDataUnsafe.user) {
+                const userId = tg.initDataUnsafe.user.id;
+                const savedData = localStorage.getItem(`clicker_${userId}`);
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    score = data.score || 0;
+                    clickPower = data.clickPower || 1;
+                    autoClickerPower = data.autoClickerPower || 0;
+                    autoClickerLevel = data.autoClickerLevel || 0;
+                    isDoubleClickBought = data.isDoubleClickBought || false;
+                    isMegaClickBought = data.isMegaClickBought || false;
+                    updateUI();
+                }
+            }
+        }
+        
+        // Сохранение игры
+        function saveGame() {
+            if (tg.initDataUnsafe.user) {
+                const userId = tg.initDataUnsafe.user.id;
+                const data = {
+                    score,
+                    clickPower,
+                    autoClickerPower,
+                    autoClickerLevel,
+                    isDoubleClickBought,
+                    isMegaClickBought
+                };
+                localStorage.setItem(`clicker_${userId}`, JSON.stringify(data));
+            }
+        }
+        
+        // Обновление интерфейса
+        function updateUI() {
+            // Счетчик
+            counter.textContent = score >= 1000 ? (score / 1000).toFixed(1) + 'k' : score;
+            
+            // Магазин
+            document.getElementById('auto-power').textContent = autoClickerLevel + 1;
+            document.getElementById('auto-price').textContent = 50 * (autoClickerLevel + 1);
+            
+            buyAutoBtn.disabled = score < 50 * (autoClickerLevel + 1);
+            buyDoubleBtn.disabled = isDoubleClickBought || score < 100;
+            buyMegaBtn.disabled = isMegaClickBought || score < 500;
+            
+            if (isDoubleClickBought) buyDoubleBtn.textContent = "Куплено";
+            if (isMegaClickBought) buyMegaBtn.textContent = "Куплено";
+        }
+        
+        // Клик по основной кнопке
+        clickButton.addEventListener('click', () => {
+            score += clickPower;
+            if (isDoubleClickBought) score += clickPower;
+            if (isMegaClickBought) score += 10;
+            updateUI();
+            saveGame();
+        });
+        
+        // Автокликер
+        setInterval(() => {
+            if (autoClickerPower > 0) {
+                score += autoClickerPower;
+                updateUI();
+                saveGame();
+            }
+        }, 1000);
+        
+        // Покупка улучшений
+        buyAutoBtn.addEventListener('click', () => {
+            const cost = 50 * (autoClickerLevel + 1);
+            if (score >= cost) {
+                score -= cost;
+                autoClickerLevel++;
+                autoClickerPower = autoClickerLevel;
+                updateUI();
+                saveGame();
+            }
+        });
+        
+        buyDoubleBtn.addEventListener('click', () => {
+            if (score >= 100) {
+                score -= 100;
+                isDoubleClickBought = true;
+                updateUI();
+                saveGame();
+            }
+        });
+        
+        buyMegaBtn.addEventListener('click', () => {
+            if (score >= 500) {
+                score -= 500;
+                isMegaClickBought = true;
+                updateUI();
+                saveGame();
+            }
+        });
+        
+        // Переключение вкладок
+        openShopBtn.addEventListener('click', () => {
+            gameTab.classList.remove('active');
+            shopTab.classList.add('active');
+            updateUI();
+        });
+        
+        backToGameBtn.addEventListener('click', () => {
+            shopTab.classList.remove('active');
+            gameTab.classList.add('active');
+        });
+        
+        // Инициализация
+        loadGame();
+        updateUI();
+        
+        // Кнопка "Поделиться" в Telegram
+        tg.MainButton.setText("ПОДЕЛИТЬСЯ");
+        tg.MainButton.show();
+        tg.MainButton.onClick(() => {
+            tg.shareLink(`https://t.me/share/url?url=${encodeURIComponent("Попробуй мой кликер!")}`);
+        });
+    </script>
+</body>
+</html>
