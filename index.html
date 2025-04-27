@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Clicker</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            margin: 0;
+            padding: 0;
+            color: white;
+            text-align: center;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        #counter {
+            font-size: 48px;
+            margin: 20px;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        #clickButton {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff6b6b, #ff4757);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            margin: 0 auto;
+        }
+        #clickButton:active {
+            transform: scale(0.95);
+        }
+        #shop-button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Telegram Clicker</h1>
+    <div id="counter">0</div>
+    <button id="clickButton">КЛИКНИ!</button>
+    <button id="shop-button">Магазин 🛒</button>
+
+    <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Развернуть приложение на весь экран
+        
+        let score = 0;
+        let clickPower = 1;
+        let autoClickerPower = 0;
+        
+        const counter = document.getElementById('counter');
+        const clickButton = document.getElementById('clickButton');
+        const shopButton = document.getElementById('shop-button');
+        
+        // Загрузка данных из Telegram Storage
+        if (tg.initDataUnsafe.user) {
+            const userId = tg.initDataUnsafe.user.id;
+            const savedData = localStorage.getItem(`clicker_${userId}`);
+            
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                score = data.score || 0;
+                clickPower = data.clickPower || 1;
+                autoClickerPower = data.autoClickerPower || 0;
+                updateCounter();
+            }
+        }
+        
+        // Клик по кнопке
+        clickButton.addEventListener('click', () => {
+            score += clickPower;
+            updateCounter();
+            saveData();
+        });
+        
+        // Автокликер
+        setInterval(() => {
+            if (autoClickerPower > 0) {
+                score += autoClickerPower;
+                updateCounter();
+                saveData();
+            }
+        }, 1000);
+        
+        // Кнопка магазина - переход на chrenobus.github.io/shop.html
+        shopButton.addEventListener('click', () => {
+            tg.openLink('https://chrenobus.github.io/shop.html'); // Все ссылки ведут на ваш GitHub!
+        });
+        
+        // Обновление счетчика
+        function updateCounter() {
+            counter.textContent = score;
+            
+            // Форматирование больших чисел
+            if (score >= 1000) {
+                counter.textContent = (score / 1000).toFixed(1) + 'k';
+            }
+            if (score >= 1000000) {
+                counter.textContent = (score / 1000000).toFixed(1) + 'M';
+            }
+        }
+        
+        // Сохранение данных в localStorage
+        function saveData() {
+            if (tg.initDataUnsafe.user) {
+                const userId = tg.initDataUnsafe.user.id;
+                const data = {
+                    score,
+                    clickPower,
+                    autoClickerPower
+                };
+                localStorage.setItem(`clicker_${userId}`, JSON.stringify(data));
+            }
+        }
+        
+        // Кнопка "Поделиться" в Telegram
+        tg.MainButton.setText("ПОДЕЛИТЬСЯ");
+        tg.MainButton.show();
+        tg.MainButton.onClick(() => {
+            tg.shareLink(`https://t.me/share/url?url=${encodeURIComponent("Попробуй мой кликер!")}`);
+        });
+    </script>
+</body>
+</html>
