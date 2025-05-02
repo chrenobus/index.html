@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epic Clicker</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        #counter {
+            font-size: 3rem;
+            margin: 20px 0;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        #clickBtn {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ff6b6b, #ff4757);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin: 20px auto;
+            display: block;
+        }
+        
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+        
+        .tab-btn.active {
+            background: rgba(255,255,255,0.4);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .upgrade {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: left;
+        }
+        
+        .upgrade button {
+            background: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            padding: 8px 15px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        
+        .upgrade button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        @keyframes clickEffect {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        
+        .click-effect {
+            position: absolute;
+            font-size: 24px;
+            color: gold;
+            pointer-events: none;
+            animation: clickEffect 1s forwards;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-tab" class="tab-content active">
+        <h1>✨ Epic Clicker ✨</h1>
+        <div id="counter">0</div>
+        <button id="clickBtn">CLICK ME!</button>
+    </div>
+    
+    <div id="shop-tab" class="tab-content">
+        <h2>🛒 Магазин улучшений</h2>
+        
+        <div class="upgrade">
+            <h3>⚡ Автокликер (Уровень <span id="auto-level">1</span>)</h3>
+            <p>Доход: <span id="auto-income">1</span> очко/сек</p>
+            <p>Цена: <span id="auto-price">50</span> очков</p>
+            <button id="buy-auto">Купить</button>
+        </div>
+        
+        <div class="upgrade">
+            <h3>💥 Двойной клик</h3>
+            <p>Увеличивает силу кликов x2</p>
+            <p>Цена: <span id="double-price">100</span> очков</p>
+            <button id="buy-double">Купить</button>
+        </div>
+        
+        <div class="upgrade">
+            <h3>🚀 Мега клик</h3>
+            <p>+10 очков за каждый клик</p>
+            <p>Цена: <span id="mega-price">500</span> очков</p>
+            <button id="buy-mega">Купить</button>
+        </div>
+    </div>
+    
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="game-tab">Игра</button>
+        <button class="tab-btn" data-tab="shop-tab">Магазин</button>
+    </div>
+
+    <script>
+        // Игровые переменные
+        let score = 0;
+        let clickPower = 1;
+        let autoClickerLevel = 1;
+        let isDoubleBought = false;
+        let isMegaBought = false;
+        
+        // Элементы интерфейса
+        const counter = document.getElementById('counter');
+        const clickBtn = document.getElementById('clickBtn');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabs = document.querySelectorAll('.tab-content');
+        
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.expand();
+            tg.MainButton.setText("Поделиться рекордом");
+            tg.MainButton.show();
+            tg.MainButton.onClick(() => {
+                tg.sendData(JSON.stringify({score: score}));
+            });
+        }
+        
+        // Обработчик кликов
+        clickBtn.addEventListener('click', (e) => {
+            // Критический удар (10% шанс)
+            const isCritical = Math.random() < 0.1;
+            let power = clickPower;
+            
+            if (isCritical) power *= 2;
+            if (isDoubleBought) power *= 2;
+            if (isMegaBought) power += 10;
+            
+            // Анимация
+            createClickEffect(e.clientX, e.clientY, isCritical ? '💥 ' + power : '+' + power);
+            
+            // Обновление счета
+            score += power;
+            updateGame();
+        });
+        
+        // Автокликер
+        setInterval(() => {
+            if (autoClickerLevel > 0) {
+                score += autoClickerLevel;
+                updateGame();
+            }
+        }, 1000);
+        
+        // Магазин
+        document.getElementById('buy-auto').addEventListener('click', () => {
+            const cost = 50 * autoClickerLevel;
+            if (score >= cost) {
+                score -= cost;
+                autoClickerLevel++;
+                updateShop();
+                updateGame();
+            }
+        });
+        
+        document.getElementById('buy-double').addEventListener('click', () => {
+            const cost = 100;
+            if (score >= cost && !isDoubleBought) {
+                score -= cost;
+                isDoubleBought = true;
+                document.getElementById('buy-double').disabled = true;
+                document.getElementById('buy-double').textContent = "Куплено";
+                updateGame();
+            }
+        });
+        
+        document.getElementById('buy-mega').addEventListener('click', () => {
+            const cost = 500;
+            if (score >= cost && !isMegaBought) {
+                score -= cost;
+                isMegaBought = true;
+                document.getElementById('buy-mega').disabled = true;
+                document.getElementById('buy-mega').textContent = "Куплено";
+                updateGame();
+            }
+        });
+        
+        // Система вкладок
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.getAttribute('data-tab');
+                
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabs.forEach(t => t.classList.remove('active'));
+                
+                btn.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // Функции
+        function createClickEffect(x, y, text) {
+            const effect = document.createElement('div');
+            effect.className = 'click-effect';
+            effect.textContent = text;
+            effect.style.left = `${x - 15}px`;
+            effect.style.top = `${y - 15}px`;
+            document.body.appendChild(effect);
+            setTimeout(() => effect.remove(), 1000);
+        }
+        
+        function updateGame() {
+            counter.textContent = score;
+            localStorage.setItem('gameData', JSON.stringify({
+                score,
+                clickPower,
+                autoClickerLevel,
+                isDoubleBought,
+                isMegaBought
+            }));
+        }
+        
+        function updateShop() {
+            document.getElementById('auto-level').textContent = autoClickerLevel;
+            document.getElementById('auto-income').textContent = autoClickerLevel;
+            document.getElementById('auto-price').textContent = 50 * autoClickerLevel;
+            
+            document.getElementById('buy-auto').disabled = score < 50 * autoClickerLevel;
+            document.getElementById('buy-double').disabled = isDoubleBought || score < 100;
+            document.getElementById('buy-mega').disabled = isMegaBought || score < 500;
+        }
+        
+        // Загрузка сохранения
+        const savedData = localStorage.getItem('gameData');
+        if (savedData) {
+            const data = JSON.parse(savedData);
+            score = data.score || 0;
+            clickPower = data.clickPower || 1;
+            autoClickerLevel = data.autoClickerLevel || 1;
+            isDoubleBought = data.isDoubleBought || false;
+            isMegaBought = data.isMegaBought || false;
+            
+            if (isDoubleBought) {
+                document.getElementById('buy-double').disabled = true;
+                document.getElementById('buy-double').textContent = "Куплено";
+            }
+            
+            if (isMegaBought) {
+                document.getElementById('buy-mega').disabled = true;
+                document.getElementById('buy-mega').textContent = "Куплено";
+            }
+            
+            updateGame();
+            updateShop();
+        }
+    </script>
+</body>
+</html>
